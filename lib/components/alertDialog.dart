@@ -103,7 +103,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
         ),
         TextButton(
           onPressed: () {
-            widget.addMarker!(widget.latLng, textEditingController.text.toString(), list);
+            widget.addMarker!(widget.latLng, (textEditingController.text.toString() != '') ? textEditingController.text.toString() : 'No title' , list);
             debugPrint(list.toString());
             Navigator.of(context).pop();
           },

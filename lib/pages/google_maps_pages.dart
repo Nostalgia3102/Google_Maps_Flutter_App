@@ -79,7 +79,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
       _markersSet.addAll(_markersSetPink);
     });
 
-    for(Marker m in _markersSet){
+    for (Marker m in _markersSet) {
       _markerPositionsList.add(m.position);
     }
   }
@@ -164,18 +164,10 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         InkWell(
-                          onTap: (){
-                            Set<Marker> updatedMarkers = _markersSetGreen.map((marker) {
-                              return marker.copyWith(
-                                iconParam: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-                              );
-                            }).toSet();
-
-                            _markersSetGreen.clear();
-                            _markersSetGreen.addAll(updatedMarkers);
-                            _storeMarkers(_markersSetGreen, 'type_green');
-                            retrieveMarkers('type_green');
-                            setState(() {});
+                          onTap: () {
+                            debugPrint("META");
+                            debugPrint(_markersSetGreen.toString());
+                           animateMarker(_markersSetGreen);
                           },
                           child: const Row(
                             children: [
@@ -193,41 +185,47 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
                             ],
                           ),
                         ),
-                        SizedBox(
+                        const SizedBox(
                           height: 30,
                         ),
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 10,
-                            ),
-                            Icon(
-                              Icons.star_outline,
-                              color: Colors.orange,
-                            ),
-                            SizedBox(
-                              width: 10,
-                            ),
-                            Text("Starred Places")
-                          ],
+                        InkWell(
+                          onTap: (){},
+                          child: const Row(
+                            children: [
+                              SizedBox(
+                                width: 10,
+                              ),
+                              Icon(
+                                Icons.star_outline,
+                                color: Colors.orange,
+                              ),
+                              SizedBox(
+                                width: 10,
+                              ),
+                              Text("Starred Places")
+                            ],
+                          ),
                         ),
-                        SizedBox(
+                        const SizedBox(
                           height: 30,
                         ),
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 10,
-                            ),
-                            Icon(
-                              Icons.heart_broken,
-                              color: Colors.pink,
-                            ),
-                            SizedBox(
-                              width: 10,
-                            ),
-                            Text("Favourites")
-                          ],
+                        InkWell(
+                          onTap: (){},
+                          child: const Row(
+                            children: [
+                              SizedBox(
+                                width: 10,
+                              ),
+                              Icon(
+                                Icons.heart_broken,
+                                color: Colors.pink,
+                              ),
+                              SizedBox(
+                                width: 10,
+                              ),
+                              Text("Favourites")
+                            ],
+                          ),
                         )
                       ]),
                 )
@@ -243,19 +241,62 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
   }
 
   void addMarker(LatLng latLong, String title, [List<bool>? list]) {
+    String key = ((list?[0] ?? false) &&
+            (list?[1] ?? false) &&
+            (list?[2] ?? false) == true)
+        ? 'type_all'
+        : ((list?[0] ?? false) && (list?[1] ?? false) == true)
+            ? 'type_0_1'
+            : ((list?[1] ?? false) && (list?[2] ?? false) == true)
+                ? 'type_1_2'
+                : ((list?[0] ?? false) && (list?[2] ?? false) == true)
+                    ? 'type_2_0'
+                    : (list?[0] ?? false)
+                        ? 'type_green'
+                        : (list?[1] ?? false)
+                            ? 'type_orange'
+                            : (list?[2] ?? false)
+                                ? 'type_pink'
+                                : 'default';
+
+    debugPrint("The KEY is --> $key");
+
     final marker = Marker(
         markerId: MarkerId(latLong.toString()),
         position: latLong,
         infoWindow: InfoWindow(
             title: title,
-            snippet: latLong.toString(),
+            snippet: key,
             onTap: () => onMarkerTap(MarkerModel(
-                  latitude: latLong.latitude,
-                  longitude: latLong.longitude,
-                  markerId: latLong.toString(),
-                  title: title,
-                ))),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow));
+                latitude: latLong.latitude,
+                longitude: latLong.longitude,
+                markerId: latLong.toString(),
+                title: title,
+                colors: title,
+            onTapMarker: onMarkerTap))),
+        icon: ((list?[0] ?? false) &&
+                (list?[1] ?? false) &&
+                (list?[2] ?? false) == true)
+            ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure)
+            : ((list?[0] ?? false) && (list?[1] ?? false) == true)
+                ? BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueCyan)
+                : ((list?[1] ?? false) && (list?[2] ?? false) == true)
+                    ? BitmapDescriptor.defaultMarkerWithHue(
+                        BitmapDescriptor.hueRose)
+                    : ((list?[0] ?? false) && (list?[2] ?? false) == true)
+                        ? BitmapDescriptor.defaultMarkerWithHue(
+                            BitmapDescriptor.hueMagenta)
+                        : (list?[0] ?? false)
+                            ? BitmapDescriptor.defaultMarkerWithHue(
+                                BitmapDescriptor.hueGreen)
+                            : (list?[1] ?? false)
+                                ? BitmapDescriptor.defaultMarkerWithHue(
+                                    BitmapDescriptor.hueOrange)
+                                : (list?[2] ?? false)
+                                    ? BitmapDescriptor.defaultMarkerWithHue(
+                                        BitmapDescriptor.hueViolet)
+                                    : BitmapDescriptor.defaultMarker);
 
     debugPrint(marker.infoWindow.title);
     debugPrint(marker.infoWindow.snippet);
@@ -340,6 +381,30 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
         });
   }
 
+
+  void animateMarker(Set<Marker> markers) {
+    Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      Set<Marker> updatedMarkers = markers.map((marker) {
+        LatLng newPosition = LatLng(
+          marker.position.latitude + 0.001,
+          marker.position.longitude + 0.001,
+        );
+        return marker.copyWith(
+          positionParam: newPosition,
+        );
+      }).toSet();
+
+      setState(() {
+        markers = updatedMarkers;
+      });
+
+      if (timer.tick >= 20) {
+        timer.cancel();
+      }
+    });
+  }
+
+
   void _storeMarkers(Set<Marker> markers, String key) {
     var box = Hive.box('testBox');
     List<MarkerModel> markerModels = markers.map((marker) {
@@ -355,18 +420,10 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
     if (markerModelsData != null) {
       debugPrint("inside retrive markers");
       List<MarkerModel> markerModels = List<MarkerModel>.from(markerModelsData);
-      Set<Marker> markers =
-          markerModels.map((model) {
-            return model.toMarker();
-          }).toSet();
-
-      // Print each marker
-      for (Marker marker in markers) {
-        debugPrint(
-            "The value of marker is -> ${marker.markerId.value.toString()}");
-        debugPrint("The value of marker is -> ${marker.markerId}");
-        debugPrint("The value of marker is -> ${marker.icon.toString()}");
-      }
+      Set<Marker> markers = markerModels.map((model) {
+        model.onTapMarker = onMarkerTap;
+        return model.toMarker();
+      }).toSet();
       return markers;
     } else {
       debugPrint("else executed");

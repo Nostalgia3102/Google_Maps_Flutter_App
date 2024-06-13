@@ -21,13 +21,14 @@ class MarkerModelAdapter extends TypeAdapter<MarkerModel> {
       longitude: fields[1] as double,
       markerId: fields[2] as String,
       title: fields[3] as String?,
+      colors: fields[4] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, MarkerModel obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.latitude)
       ..writeByte(1)
@@ -35,7 +36,9 @@ class MarkerModelAdapter extends TypeAdapter<MarkerModel> {
       ..writeByte(2)
       ..write(obj.markerId)
       ..writeByte(3)
-      ..write(obj.title);
+      ..write(obj.title)
+      ..writeByte(4)
+      ..write(obj.colors);
   }
 
   @override

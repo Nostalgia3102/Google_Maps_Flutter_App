@@ -1,7 +1,12 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:get_it/get_it.dart';
+import 'package:google_maps/models/koi_class_firebase.dart';
+import 'package:google_maps/models/userProfile.dart';
+import 'package:google_maps/services/database_services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:location/location.dart';
@@ -9,6 +14,8 @@ import 'package:location/location.dart';
 import '../components/alertDialog.dart';
 import '../constants.dart';
 import '../models/koi_class.dart';
+import '../services/auth_service.dart';
+import '../services/navigation_services.dart';
 
 class GoogleMapPage extends StatefulWidget {
   const GoogleMapPage({super.key});
@@ -18,6 +25,11 @@ class GoogleMapPage extends StatefulWidget {
 }
 
 class _GoogleMapPageState extends State<GoogleMapPage> {
+  final GetIt _getIt = GetIt.instance;
+  late AuthService _authService;
+  late NavigationService _navigationService;
+  late DatabaseServices _databaseServices;
+
   final locationController = Location();
   bool modalSheetOpen = false;
   GoogleMapController? mapController;
@@ -32,17 +44,38 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
   Map<PolylineId, Polyline> polylines = {};
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
-  Set<Marker> _markersSetGreen = {};
+  final Set<Marker> _markersSetGreen = {};
   final Set<Marker> _markersSetOrange = {};
   final Set<Marker> _markersSetPink = {};
   final Set<Marker> _markersSet = {};
   final List<LatLng> _markerPositionsList = [];
 
+  List<UserProfile> profiles = [];
+
+
+
   @override
   void initState() {
     super.initState();
+    _authService = _getIt.get<AuthService>();
+    _navigationService = _getIt.get<NavigationService>();
+    _databaseServices = _getIt.get<DatabaseServices>();
     WidgetsBinding.instance
         .addPostFrameCallback((_) async => await initializeMap());
+    uiui();
+  }
+
+  uiui(){
+    profiles.clear();
+    _databaseServices.getMarkerModelData().then((value) {
+      value?.forEach((element) {
+        profiles.add((element.data() as UserProfile));
+      });
+      if(mounted) {
+        setState(() {});
+      }
+    });
+
   }
 
   Future<void> loadMarkersFromBox() async {
@@ -167,7 +200,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
                           onTap: () {
                             debugPrint("META");
                             debugPrint(_markersSetGreen.toString());
-                           animateMarker(_markersSetGreen);
+                            animateMarker(_markersSetGreen);
                           },
                           child: const Row(
                             children: [
@@ -189,7 +222,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
                           height: 30,
                         ),
                         InkWell(
-                          onTap: (){},
+                          onTap: () {},
                           child: const Row(
                             children: [
                               SizedBox(
@@ -210,7 +243,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
                           height: 30,
                         ),
                         InkWell(
-                          onTap: (){},
+                          onTap: () {},
                           child: const Row(
                             children: [
                               SizedBox(
@@ -273,7 +306,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
                 markerId: latLong.toString(),
                 title: title,
                 colors: title,
-            onTapMarker: onMarkerTap))),
+                onTapMarker: onMarkerTap))),
         icon: ((list?[0] ?? false) &&
                 (list?[1] ?? false) &&
                 (list?[2] ?? false) == true)
@@ -339,24 +372,24 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
     //For Type Green :
     if (list?[0] == true) {
       _storeMarkers(_markersSetGreen, 'type_green');
-      debugPrint('Green: ${box.get('type_green')}');
-      Set<Marker> s = retrieveMarkers('type_green');
-      debugPrint(s.length.toString());
+      // debugPrint('Green: ${box.get('type_green')}');
+      // Set<Marker> s = retrieveMarkers('type_green');
+      // debugPrint(s.length.toString());
     }
 
     // For Type Orange :
     if (list?[1] == true) {
       _storeMarkers(_markersSetOrange, 'type_orange');
-      debugPrint('Orange: ${box.get('type_orange')}');
-      Set<Marker> ss = retrieveMarkers('type_orange');
-      debugPrint(ss.length.toString());
+      // debugPrint('Orange: ${box.get('type_orange')}');
+      // Set<Marker> ss = retrieveMarkers('type_orange');
+      // debugPrint(ss.length.toString());
     }
     // For Type Pink:
     if (list?[2] == true) {
       _storeMarkers(_markersSetPink, 'type_pink');
-      debugPrint('Pink: ${box.get('type_pink')}');
-      Set<Marker> sss = retrieveMarkers('type_pink');
-      debugPrint(sss.length.toString());
+      // debugPrint('Pink: ${box.get('type_pink')}');
+      // Set<Marker> sss = retrieveMarkers('type_pink');
+      // debugPrint(sss.length.toString());
     }
   }
 
@@ -367,6 +400,39 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
         return AddItemDialog(latLng: latLng, addMarker: addMarker);
       },
     );
+  }
+
+  Future<bool> _sendOnlineAllMarkerTypes() async {
+    try {
+      for (Marker m in _markersSetGreen) {
+        await _sendMessage(m);
+      }
+      for (Marker m in _markersSetOrange) {
+        await _sendMessage(m);
+      }
+      for (Marker m in _markersSetPink) {
+        await _sendMessage(m);
+      }
+      debugPrint("All msgs sent online");
+      return true;
+    } catch (e) {
+      debugPrint(e.toString());
+      return false;
+    }
+  }
+
+  Future<void> _sendMessage(Marker marker) async {
+    MarkerModelFirebase message = MarkerModelFirebase(
+      markerId: marker.markerId.toString(),
+      latitude: marker.position.latitude,
+      longitude: marker.position.longitude,
+      onTapMarker: null,
+
+      ///TO DO:
+      colors: marker.infoWindow.snippet,
+      title: marker.infoWindow.title,
+    );
+    await _databaseServices.sendMarkerModel(_authService.user!.uid, message);
   }
 
   Widget listViewed() {
@@ -380,7 +446,6 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
           );
         });
   }
-
 
   void animateMarker(Set<Marker> markers) {
     Timer.periodic(const Duration(milliseconds: 50), (timer) {
@@ -403,7 +468,6 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
       }
     });
   }
-
 
   void _storeMarkers(Set<Marker> markers, String key) {
     var box = Hive.box('testBox');
@@ -477,10 +541,60 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       key: scaffoldKey,
       appBar: AppBar(
         title: const Text("Google Maps App"),
+        actions: [ IconButton(
+            onPressed: () async {
+              // StreamBuilder<DocumentSnapshot<UserProfile>>(
+              //     stream: _databaseServices.getMarkerModelData() as Stream< DocumentSnapshot<UserProfile>>,
+              //     builder: (context, snapshot) {
+              //       if (snapshot.connectionState == ConnectionState.waiting) {
+              //         return const Center(child: CircularProgressIndicator());
+              //       }
+              //       if (!snapshot.hasData || snapshot.data == null) {
+              //         return const Center(child: Text('No messages found.'));
+              //       }
+              //       UserProfile userProfile = snapshot.data!.data()!;
+              //       debugPrint("inside stream builder");
+              //       debugPrint(userProfile.toString());
+              //       return Text(userProfile.toString());
+              //     });
+
+              debugPrint(profiles.toString());
+              for (var element in profiles) {
+                debugPrint(element.toString());
+              }
+              profiles[0].markerMessageFirebase?.forEach((element) {
+                debugPrint("DATA IS HEREREEE");
+                debugPrint(element.colors);
+              });
+
+                ///TO DO: SHOW SNACKBAR HERE
+                debugPrint("Data Came");
+            },
+            icon: const Icon(Icons.download)),
+          IconButton(
+              onPressed: () async {
+                bool result = await _sendOnlineAllMarkerTypes();
+                if (result) {
+                  ///TO DO: SHOW SNACKBAR HERE
+                } else {
+                  debugPrint("Upload button pressed and upload failed.");
+                }
+              },
+              icon: const Icon(Icons.upload)),
+          IconButton(
+              onPressed: () async {
+                bool result = await _authService.logout();
+                if (result) {
+                  _navigationService.pushReplacementNamed("/login");
+                }
+              },
+              icon: const Icon(Icons.logout)),
+        ],
       ),
       body: currentPosition == null
           ? const Center(child: CircularProgressIndicator())

@@ -82,9 +82,8 @@ class MarkerModel extends HiveObject {
     );
   }
 }
-/*
 
+/*
 COMMAND TO GET class.g.dart file :
 flutter packages pub run build_runner build
-
 */

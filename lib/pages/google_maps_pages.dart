@@ -48,11 +48,10 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
   final Set<Marker> _markersSetOrange = {};
   final Set<Marker> _markersSetPink = {};
   final Set<Marker> _markersSet = {};
+  final Set<MarkerModelFirebase> _markerSetFirebase = {};
   final List<LatLng> _markerPositionsList = [];
 
   List<UserProfile> profiles = [];
-
-
 
   @override
   void initState() {
@@ -65,17 +64,15 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
     uiui();
   }
 
-  uiui(){
+  uiui() {
     profiles.clear();
-    _databaseServices.getMarkerModelData().then((value) {
-      value?.forEach((element) {
-        profiles.add((element.data() as UserProfile));
-      });
-      if(mounted) {
+    _databaseServices.getMarkerModelData().listen((value) {
+      print("dataType: ${value.data()}");
+      profiles.add((value.data() as UserProfile));
+      if (mounted) {
         setState(() {});
       }
     });
-
   }
 
   Future<void> loadMarkersFromBox() async {
@@ -102,6 +99,36 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
       Set<Marker> sss = retrieveMarkers('type_pink');
       for (Marker m in sss) {
         _markersSetPink.add(m);
+      }
+    }
+
+    setState(() {
+      // Combining all markers into the main set
+      _markersSet.addAll(_markersSetGreen);
+      _markersSet.addAll(_markersSetOrange);
+      _markersSet.addAll(_markersSetPink);
+    });
+
+    for (Marker m in _markersSet) {
+      _markerPositionsList.add(m.position);
+    }
+  }
+
+  Future<void> loadMarkersFromFirebase(Set<Marker> sett) async {
+debugPrint("DATA IS HERE - LOAD MARKERS FIREBASE");
+    for(Marker m in sett){
+      debugPrint(m.infoWindow.snippet.toString());
+
+      if(m.infoWindow.snippet.toString() == 'type_green'){
+          _markersSetGreen.add(m);
+      }
+
+      if(m.infoWindow.snippet.toString() == 'type_orange'){
+          _markersSetOrange.add(m);
+      }
+
+      if(m.infoWindow.snippet.toString() == 'type_pink'){
+          _markersSetPink.add(m);
       }
     }
 
@@ -495,6 +522,34 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
     }
   }
 
+  Future<Set<Marker>> retrieveMarkersfromFirebase(List<MarkerModelFirebase>? ll) async{
+    if (ll != null) {
+      debugPrint("inside retrive markers - firebase");
+      List<dynamic>? lll = [];
+      for (MarkerModelFirebase mmf in ll) {
+        MarkerModel markerModel = MarkerModel(
+            latitude: mmf.latitude,
+            longitude: mmf.longitude,
+            markerId: mmf.markerId,
+            colors: mmf.colors,
+        onTapMarker: onMarkerTap,
+        title: mmf.title);
+        lll.add(markerModel);
+      }
+
+      // List<MarkerModel> markerModels = ll.map((e) => e.toMarkerModel()).toList();
+      List<MarkerModel> markerModels = List<MarkerModel>.from(lll);
+      Set<Marker> markers = markerModels.map((model) {
+        model.onTapMarker = onMarkerTap;
+        return model.toMarker();
+      }).toSet();
+      return markers;
+    } else {
+      debugPrint("else executed");
+      return {};
+    }
+  }
+
   void onMarkerTap(MarkerModel markerModel) {
     showDialog(
       context: context,
@@ -541,41 +596,34 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       key: scaffoldKey,
       appBar: AppBar(
         title: const Text("Google Maps App"),
-        actions: [ IconButton(
-            onPressed: () async {
-              // StreamBuilder<DocumentSnapshot<UserProfile>>(
-              //     stream: _databaseServices.getMarkerModelData() as Stream< DocumentSnapshot<UserProfile>>,
-              //     builder: (context, snapshot) {
-              //       if (snapshot.connectionState == ConnectionState.waiting) {
-              //         return const Center(child: CircularProgressIndicator());
-              //       }
-              //       if (!snapshot.hasData || snapshot.data == null) {
-              //         return const Center(child: Text('No messages found.'));
-              //       }
-              //       UserProfile userProfile = snapshot.data!.data()!;
-              //       debugPrint("inside stream builder");
-              //       debugPrint(userProfile.toString());
-              //       return Text(userProfile.toString());
-              //     });
+        actions: [
+          IconButton(
+              onPressed: () async {
 
-              debugPrint(profiles.toString());
-              for (var element in profiles) {
-                debugPrint(element.toString());
-              }
-              profiles[0].markerMessageFirebase?.forEach((element) {
-                debugPrint("DATA IS HEREREEE");
-                debugPrint(element.colors);
-              });
+                debugPrint("Marker Model Firebase");
+                debugPrint(profiles.length.toString());
+                List<MarkerModelFirebase>? ll = [];
+                debugPrint("mai chala");
+                for (int i = 0;
+                    i < profiles[0].markerMessageFirebase!.length;
+                    i++) {
+                  debugPrint(
+                      profiles[0].markerMessageFirebase?[i].title.toString());
+                  // retrieveMarkersfromFirebase(profiles[0].markerMessageFirebase![i]);
+                  ll.add(profiles[0].markerMessageFirebase![i]);
+                }
+
+                Set<Marker> sett = await retrieveMarkersfromFirebase(ll);
+                await loadMarkersFromFirebase(sett);
 
                 ///TO DO: SHOW SNACKBAR HERE
                 debugPrint("Data Came");
-            },
-            icon: const Icon(Icons.download)),
+              },
+              icon: const Icon(Icons.download)),
           IconButton(
               onPressed: () async {
                 bool result = await _sendOnlineAllMarkerTypes();

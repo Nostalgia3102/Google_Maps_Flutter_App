@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'koi_class_firebase.dart';
 
@@ -18,12 +19,15 @@ class UserProfile {
       // required this.pfpURL,
       });
 
-  UserProfile.fromJson(Map<String, dynamic> json)
-      : uid = json['uid'],
-        name = json['name'],
-        markerMessageFirebase = List.from(json['markerMessageFirebase'])
-            .map((m) => MarkerModelFirebase.fromFirestore(m))
-            .toList();
+  UserProfile.fromJson(Map<String, dynamic> json){
+    log("DATA FROM SERVER: ${json.toString()}");
+    uid = json['uid'];
+    name = json['name'];
+    markerMessageFirebase = List.from(json['markerMessageFirebase'])
+        .map((m) => MarkerModelFirebase.fromFirestore(m))
+        .toList();
+  }
+
 
   // markerModelCollectionId = json['markerModelCollectionId'];
   // pfpURL = json['pfpURL'];

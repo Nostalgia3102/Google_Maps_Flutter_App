@@ -68,7 +68,7 @@ class DatabaseServices {
       String newMarker = _authService.user!.uid.toString();
       final docRef = _usersCollection!.doc(newMarker);
       await docRef.update({
-        "markerModelFirebase": FieldValue.arrayUnion(
+        "markerMessageFirebase": FieldValue.arrayUnion(
           [
             mmf.toFirestore(),
           ],
@@ -76,8 +76,12 @@ class DatabaseServices {
       });
     }
 
-  Future<Stream<DocumentSnapshot<Object?>>?> getMarkerModelData() async{
+  Stream<DocumentSnapshot<Object?>> getMarkerModelData() {
       String uid = _authService.user!.uid;
-      return _usersCollection?.doc(uid).snapshots();
+      debugPrint("Get Data");
+      debugPrint(_usersCollection?.toString());
+      debugPrint(_usersCollection?.doc(uid).toString());
+      debugPrint(_usersCollection?.doc(uid).snapshots().toString());
+      return _usersCollection!.doc(uid).snapshots() as Stream<DocumentSnapshot<Object>>;
     }
-  }
+}

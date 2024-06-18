@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import 'koi_class.dart';
+
 class MarkerModelFirebase {
   double latitude;
   double longitude;
@@ -85,8 +87,8 @@ class MarkerModelFirebase {
   }
 
   // Create MarkerModelFirebase from Firestore document
-  factory MarkerModelFirebase.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+  factory MarkerModelFirebase.fromFirestore(Map<String, dynamic> doc) {
+    Map<String, dynamic> data = doc;
     return MarkerModelFirebase(
       latitude: data['latitude'],
       longitude: data['longitude'],
@@ -95,12 +97,28 @@ class MarkerModelFirebase {
       colors: data['colors'],
     );
   }
+
+  MarkerModel toMarkerModel() {
+    return MarkerModel(
+      latitude: latitude,
+      longitude: longitude,
+      markerId: markerId,
+      title: title,
+      colors: colors,
+      onTapMarker: (marker) {
+        if (onTapMarker != null) {
+          onTapMarker!(this);
+        }
+      },
+    );
+  }
+
 }
 
 // Firestore collection reference with converter
-final FirebaseFirestore _firebaseFirestore = FirebaseFirestore.instance;
-
-final _markersCollection = _firebaseFirestore.collection("markers").withConverter<MarkerModelFirebase>(
-  fromFirestore: (snapshot, _) => MarkerModelFirebase.fromFirestore(snapshot),
-  toFirestore: (markerModel, _) => markerModel.toFirestore(),
-);
+// final FirebaseFirestore _firebaseFirestore = FirebaseFirestore.instance;
+//
+// final _markersCollection = _firebaseFirestore.collection("markers").withConverter<MarkerModelFirebase>(
+//   fromFirestore: (snapshot, _) => MarkerModelFirebase.fromFirestore(snapshot),
+//   toFirestore: (markerModel, _) => markerModel.toFirestore(),
+// );
